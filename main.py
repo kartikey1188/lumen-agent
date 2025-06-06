@@ -62,7 +62,7 @@ async def main(agent_input: AgentInput):
         user_message = agent_input.query.strip()
 
         try:
-            add_to_history(user_message, 'user_message')
+            add_to_history(user_message, 'user', user_id=agent_input.user_id, session_id=SESSION_ID)
         except Exception as history_error:
             print(f"Error adding user message to history: {history_error}")
 
@@ -81,7 +81,7 @@ async def main(agent_input: AgentInput):
                         agent_message = event.content.parts[0].text.strip()
 
                         try:
-                            add_to_history(agent_message, 'agent_message')
+                            add_to_history(agent_message, 'agent', user_id=agent_input.user_id, session_id=SESSION_ID, app_name=APP_NAME, session_service=session_service)
                         except Exception as history_error:
                             print(f"Error adding agent message to history: {history_error}")
                         
