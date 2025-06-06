@@ -12,7 +12,7 @@ class UnalteredHistory(Base):
     __tablename__ = 'unaltered_history'
     
     message_id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(SQLEnum(Role), nullable=False)
+    user_id = Column(String, nullable=False)
     message = Column(String, nullable=False)
     role = Column(SQLEnum(Role), nullable=False)
     timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)

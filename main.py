@@ -28,8 +28,9 @@ session_service = DatabaseSessionService(db_url=db_url)
 
 APP_NAME = "LUMEN_SLATE"
         
-@api.get("/agent")
+@api.post("/agent")
 async def main(agent_input: AgentInput):
+    
     try:
         initial_state = {
             "user_id": agent_input.user_id,
@@ -61,10 +62,6 @@ async def main(agent_input: AgentInput):
 
         user_message = agent_input.query.strip()
 
-        try:
-            add_to_history(user_message, 'user', user_id=agent_input.user_id, session_id=SESSION_ID)
-        except Exception as history_error:
-            print(f"Error adding user message to history: {history_error}")
 
         content = types.Content(role="user", parts=[types.Part(text=agent_input.query)])
 
@@ -81,7 +78,12 @@ async def main(agent_input: AgentInput):
                         agent_message = event.content.parts[0].text.strip()
 
                         try:
-                            add_to_history(agent_message, 'agent', user_id=agent_input.user_id, session_id=SESSION_ID, app_name=APP_NAME, session_service=session_service)
+                            await add_to_history(user_message, 'user', user_id=agent_input.user_id, session_id=SESSION_ID, app_name=APP_NAME, session_service=session_service)
+                        except Exception as history_error:
+                            print(f"Error adding user message to history: {history_error}")
+
+                        try:
+                            await add_to_history(agent_message, 'agent', user_id=agent_input.user_id, session_id=SESSION_ID, app_name=APP_NAME, session_service=session_service)
                         except Exception as history_error:
                             print(f"Error adding agent message to history: {history_error}")
                         

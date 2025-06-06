@@ -4,8 +4,12 @@ from datetime import datetime
 import logging
 import os
 import google.generativeai as genai
+import time
+from dotenv import load_dotenv
 
-genai.configure(api_key=os.getenv("GOOGLE_GENAI_API_KEY"))
+load_dotenv()
+
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 model = genai.GenerativeModel("gemini-2.0-flash")
 
 def create_summary(messages):
@@ -24,6 +28,8 @@ def create_summary(messages):
     return response.text.strip() if response and response.text else None
 
 async def add_to_history(message: str, role: str, user_id: str, session_id: str, app_name: str, session_service):
+    from google.adk.events import Event, EventActions
+    
     db_gen = get_db()     
     db = next(db_gen)     
     try:
@@ -33,7 +39,7 @@ async def add_to_history(message: str, role: str, user_id: str, session_id: str,
         db.add(db_message)
         db.commit()
 
-        # adding the message to the session state
+        # adding the message to the session state using the proper ADK method
         session = session_service.get_session(
             app_name=app_name, user_id=user_id, session_id=session_id
         )
@@ -70,18 +76,19 @@ async def add_to_history(message: str, role: str, user_id: str, session_id: str,
 
             final_message_history.append(latest_message)
 
-            logging.info(f"Adding message to history: {message_history}")
+            logging.info(f"Adding message to history: {final_message_history}")
 
-            updated_state = session.state.copy()
-
-            updated_state["message_history"] = final_message_history
-
-            session_service.create_session(
-                app_name=app_name,
-                user_id=user_id,
-                session_id=session_id,
-                state=updated_state,
+            # Updating session state using the ADK event system
+            state_changes = {"message_history": final_message_history}
+            actions_with_update = EventActions(state_delta=state_changes)
+            system_event = Event(
+                invocation_id=f"history_update_{int(time.time() * 1000)}",
+                author="root_agent",
+                actions=actions_with_update,
+                timestamp=time.time()
             )
+            session_service.append_event(session, system_event)
+
         else:
             latest_message = {
                 "role": role,
@@ -92,15 +99,17 @@ async def add_to_history(message: str, role: str, user_id: str, session_id: str,
 
             logging.info(f"Adding message to history:\n{latest_message}")
 
-            updated_state = session.state.copy()
-            updated_state["message_history"] = message_history
-
-            session_service.create_session(
-                app_name=app_name,
-                user_id=user_id,
-                session_id=session_id,
-                state=updated_state,
+            # Updating session state using the proper ADK event system
+            state_changes = {"message_history": message_history}
+            actions_with_update = EventActions(state_delta=state_changes)
+            system_event = Event(
+                invocation_id=f"history_update_{int(time.time() * 1000)}",
+                author="root_agent",
+                actions=actions_with_update,
+                timestamp=time.time()
             )
+            session_service.append_event(session, system_event)
+
     finally:
         db_gen.close()    
 
